@@ -1,0 +1,22 @@
+{
+  "name": "rn-schedule-availability-example",
+  "displayName": "RnScheduleAvailability Example",
+  "expo": {
+    "name": "rn-schedule-availability-example",
+    "slug": "rn-schedule-availability-example",
+    "description": "Example app for rn-schedule-availability",
+    "privacy": "public",
+    "version": "1.0.0",
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ]
+  }
+}
