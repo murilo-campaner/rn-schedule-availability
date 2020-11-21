@@ -12,23 +12,37 @@ npm install rn-schedule-availability
 
 ```js
 import * as React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Button, StyleSheet, View } from 'react-native';
 import RnScheduleAvailability from 'rn-schedule-availability';
 
+const daysOfWeek = [
+  'Segunda-feira',
+  'Terça-feira',
+  'Quarta-feira',
+  'Quinta-feira',
+  'Sexta-feira',
+  'Sábado',
+  'Domingo',
+];
+
 export default function App() {
-  const daysOfWeek = [
-    'Segunda-feira',
-    'Terça-feira',
-    'Quarta-feira',
-    'Quinta-feira',
-    'Sexta-feira',
-    'Sábado',
-    'Domingo',
-  ];
+  const scheduleRef = React.createRef<any>();
+
+  const handleSubmit = React.useCallback(() => {
+    if (scheduleRef.current) {
+      const schedules = scheduleRef.current.submit();
+      console.log(schedules);
+    }
+  }, [scheduleRef]);
 
   return (
     <View style={styles.container}>
-      <RnScheduleAvailability disabled={false} daysOfWeek={daysOfWeek} />
+      <RnScheduleAvailability
+        disabled={false}
+        daysOfWeek={daysOfWeek}
+        ref={scheduleRef}
+      />
+      <Button onPress={handleSubmit} title="Submit" />
     </View>
   );
 }
