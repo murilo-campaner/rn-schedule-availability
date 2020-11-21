@@ -22,20 +22,24 @@ interface ScheduleAvailabilityProps {
   daysOfWeek?: string[];
 }
 
-const ScheduleAvailability = ({
-  disabled = false,
-  daysOfWeek = [
-    'Monday',
-    'Tuesday',
-    'Wednesday',
-    'Thursday',
-    'Friday',
-    'Saturday',
-    'Sunday',
-  ],
-}: ScheduleAvailabilityProps) => {
+const defaultWeekDays = [
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+  'Sunday',
+];
+
+const ScheduleAvailability = (
+  { disabled = false, daysOfWeek = defaultWeekDays }: ScheduleAvailabilityProps,
+  ref: any
+) => {
   const [inputs, setInputs] = useState(
-    daysOfWeek.map(() => [<TimeInput ref={createRef()} />])
+    daysOfWeek.map(() => [
+      <TimeInput ref={createRef()} key={`${0}_${Math.random()}`} />,
+    ])
   );
 
   const handleAddInput = useCallback((dayIndex: number) => {
@@ -43,7 +47,11 @@ const ScheduleAvailability = ({
       const inputsList = [...prevState];
       inputsList[dayIndex] = [
         ...inputsList[dayIndex],
-        <TimeInput ref={createRef()} initialValue="" />,
+        <TimeInput
+          ref={createRef()}
+          initialValue=""
+          key={`${dayIndex}_${Math.random()}`}
+        />,
       ];
       return inputsList;
     });
@@ -56,7 +64,6 @@ const ScheduleAvailability = ({
         if (!inputsList[dayIndex] || !inputsList[dayIndex][inputIndex]) {
           return prevState;
         }
-
         inputsList[dayIndex].splice(inputIndex, 1);
         return inputsList;
       });
@@ -66,52 +73,98 @@ const ScheduleAvailability = ({
 
   const handleSubmit = useCallback(() => {
     const values = inputs.map((day: any) => {
-      return day.map((input: any) => input.ref.current.getValue());
+      const times = day.map((input: any) => input.ref.current.getValue());
+      // const ranges = mergeRanges(times);
+      // console.log(ranges);
+      return times;
     });
-    console.log(values);
     return values;
   }, [inputs]);
+
+  // const mergeRanges = (timesList: [any]) => {
+  //   // sort by start times, slice will return a shallow copy of the array, not affecting original array
+  //   const sortedMeetings = timesList.slice().sort((a: any, b: any) => {
+  //     return a.startTime > b.startTime ? 1 : -1;
+  //   });
+
+  //   // initialize mergedMeetings with the earliest meeting
+  //   const mergedMeetings = [sortedMeetings[0]];
+
+  //   for (let i = 1; i < sortedMeetings.length; i++) {
+  //     const currentMeeting = sortedMeetings[i];
+  //     const lastMergedMeeting = mergedMeetings[mergedMeetings.length - 1];
+
+  //     // if the current and last meetings overlap, use the latest end time
+  //     // objects, and arrays (which are objects) all are passed by reference. thus change will be recorded.
+  //     if (currentMeeting.startTime <= lastMergedMeeting.endTime) {
+  //       lastMergedMeeting.endTime = Math.max(
+  //         lastMergedMeeting.endTime,
+  //         currentMeeting.endTime
+  //       );
+
+  //       // add the current meeting since it doesn't overlap
+  //     } else {
+  //       mergedMeetings.push(currentMeeting);
+  //     }
+  //   }
+
+  //   return mergedMeetings;
+  // };
 
   const renderWeekDay = useCallback(
     ({ item: day, index: dayIndex }: { item: string; index: number }) => {
       const isLastItem = dayIndex === daysOfWeek.length - 1;
-      const runtimeStyle = { borderLeftWidth: isLastItem ? 1 : 0 };
+      const runtimeStyle = {
+        borderLeftWidth: isLastItem ? 1 : 0,
+        borderRightWidth: isLastItem ? 0 : 1,
+      };
       return (
         <View style={[styles.weekDayView, runtimeStyle]}>
           <Text style={styles.weekDayTitle}>{day}</Text>
           <View style={styles.weekDayInputs}>
             {inputs[dayIndex].map((input, index) =>
               React.cloneElement(input, {
-                key: `${dayIndex}_${index}`,
+                key: input.key,
                 onRemovePress: () => handleRemoveInput(dayIndex, index),
               })
             )}
           </View>
-          <TouchableOpacity onPress={() => handleAddInput(dayIndex)}>
-            <Text>+</Text>
-          </TouchableOpacity>
+          <View style={styles.timeTextInputAddBtnWrapper}>
+            <TouchableOpacity
+              style={styles.timeTextInputAddBtn}
+              onPress={() => handleAddInput(dayIndex)}
+              hitSlop={{ top: 20, right: 20, bottom: 20, left: 20 }}
+            >
+              <Text style={styles.timeTextInputAddIcon}>+</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       );
     },
     [handleAddInput, inputs, handleRemoveInput, daysOfWeek]
   );
 
+  useImperativeHandle(ref, () => ({
+    submit: handleSubmit,
+  }));
+
+  const disabledOpacity = disabled ? 0.5 : 1;
+
   return (
-    <View style={styles.wrapper} pointerEvents={disabled ? 'none' : 'auto'}>
-      <View style={styles.carouselWrapper}>
-        <Carousel
-          data={daysOfWeek}
-          activeSlideAlignment="start"
-          renderItem={renderWeekDay}
-          itemWidth={Dimensions.get('screen').width / 1.5}
-          sliderWidth={Dimensions.get('screen').width}
-          inactiveSlideScale={1}
-          inactiveSlideOpacity={1}
-        />
-      </View>
-      <TouchableOpacity onPress={handleSubmit}>
-        <Text>Submit</Text>
-      </TouchableOpacity>
+    <View
+      style={[styles.wrapper, { opacity: disabledOpacity }]}
+      pointerEvents={disabled ? 'none' : 'auto'}
+    >
+      <Carousel
+        data={daysOfWeek}
+        activeSlideAlignment="center"
+        renderItem={renderWeekDay}
+        itemWidth={Dimensions.get('screen').width / 1.5}
+        sliderWidth={Dimensions.get('screen').width}
+        inactiveSlideScale={1}
+        inactiveSlideOpacity={1}
+        containerCustomStyle={styles.carouselContainer}
+      />
     </View>
   );
 };
@@ -122,51 +175,75 @@ const TimeInput = forwardRef(
     ref: any
   ) => {
     const [value, setValue] = useState(initialValue);
-    // const [oldValue, setOldValue] = useState('');
+    const [oldValue, setOldValue] = useState('');
+    const [hasError, setHasError] = useState(false);
 
     useImperativeHandle(ref, () => ({
       getValue: () => {
         const [startTime, endTime] = value
           .split('-')
           .map((time: string) => time.trim());
+
         return {
-          startTime,
-          endTime,
+          startTime: startTime || null,
+          endTime: endTime || null,
         };
       },
     }));
 
-    // const handleFocus = useCallback(() => {
-    //   if (value === initialValue) {
-    //     setOldValue(value);
-    //     setValue('');
-    //   }
-    // }, [value, initialValue]);
+    const handleFocus = useCallback(() => {
+      if (value === initialValue) {
+        setOldValue(value);
+        setValue('');
+      }
+    }, [value, initialValue]);
 
-    // const handleBlur = useCallback(() => {
-    //   if (value === '') {
-    //     setValue(oldValue);
-    //   }
-    // }, [value, oldValue]);
+    const handleBlur = useCallback(() => {
+      if (value === '') {
+        setValue(oldValue);
+        return;
+      }
+    }, [value, oldValue]);
+
+    const handleChangeText = useCallback((text: string) => {
+      const regex = /^([0-1]?[0-9]|2[0-4]):([0-5][0-9])(:[0-5][0-9])?$/;
+      const [initialTime, endTime] = text.split(' - ');
+
+      const isValid = regex.test(initialTime) && regex.test(endTime);
+
+      if (!isValid) {
+        setHasError(true);
+      } else {
+        setHasError(false);
+      }
+
+      setValue(text);
+    }, []);
 
     return (
       <View style={styles.timeTextInputWrapper}>
         <TextInputMask
-          style={[styles.timeTextInput, styles.timeTextInputShadow]}
+          style={[
+            styles.timeTextInput,
+            styles.timeTextInputShadow,
+            hasError && styles.timeTextInputError,
+          ]}
           type="custom"
           options={{
             mask: '99:99 - 99:99',
           }}
           value={value}
-          onChangeText={setValue}
+          onChangeText={handleChangeText}
           refInput={ref}
           placeholder="08:00 - 18:00"
-          // onFocus={handleFocus}
-          // onBlur={handleBlur}
+          keyboardType="number-pad"
+          onFocus={handleFocus}
+          onBlur={handleBlur}
         />
         <TouchableOpacity
           onPress={onRemovePress}
           style={styles.timeTextInputRemoveBtn}
+          hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
         >
           <Text style={styles.timeTextInputRemoveBtnIcon}>-</Text>
         </TouchableOpacity>
@@ -177,16 +254,17 @@ const TimeInput = forwardRef(
 
 const styles = StyleSheet.create({
   wrapper: {},
-  carouselWrapper: {},
-  weekDayView: {
+  carouselContainer: {
     minHeight: 200,
+    flexGrow: 0,
+    backgroundColor: 'rgba(84, 188, 120, 0.1)',
+  },
+  weekDayView: {
     paddingVertical: 8,
     paddingHorizontal: 16,
-    borderWidth: 1,
     borderColor: '#E6E6E6',
-    borderLeftWidth: 0,
-    borderBottomWidth: 0,
-    backgroundColor: 'rgba(84, 188, 120, 0.1)',
+    borderRightWidth: 1,
+    flexGrow: 1,
   },
   weekDayTitle: {
     fontSize: 14 / PixelRatio.getFontScale(),
@@ -220,6 +298,10 @@ const styles = StyleSheet.create({
 
     elevation: 5,
   },
+  timeTextInputError: {
+    shadowColor: '#B93F3F',
+    borderLeftColor: '#B93F3F',
+  },
   timeTextInputRemoveBtn: {
     top: '50%',
     marginTop: -8,
@@ -240,6 +322,26 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
   },
+  timeTextInputAddBtnWrapper: {
+    marginTop: 8,
+    display: 'flex',
+    alignItems: 'center',
+  },
+  timeTextInputAddBtn: {
+    backgroundColor: '#54BC78',
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  timeTextInputAddIcon: {
+    color: '#FFF',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    fontSize: 16,
+  },
 });
 
-export default ScheduleAvailability;
+export default forwardRef(ScheduleAvailability);

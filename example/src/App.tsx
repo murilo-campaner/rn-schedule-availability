@@ -3,16 +3,25 @@ import { StyleSheet, View } from 'react-native';
 import RnScheduleAvailability from 'rn-schedule-availability';
 
 export default function App() {
+  const daysOfWeek = [
+    'Segunda-feira',
+    'Terça-feira',
+    'Quarta-feira',
+    'Quinta-feira',
+    'Sexta-feira',
+    'Sábado',
+    'Domingo',
+  ];
+
   return (
     <View style={styles.container}>
-      <RnScheduleAvailability />
+      <RnScheduleAvailability disabled={false} daysOfWeek={daysOfWeek} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 100,
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
