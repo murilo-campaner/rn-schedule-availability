@@ -1,5 +1,5 @@
 {
-  "name": "rn-schedule-availability",
+  "name": "react-native-schedule-availability",
   "version": "0.1.0",
   "description": "rn-schedule-availability",
   "main": "lib/commonjs/index",
