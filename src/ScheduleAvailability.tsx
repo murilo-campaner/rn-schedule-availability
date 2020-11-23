@@ -2,7 +2,9 @@ import React, {
   createRef,
   forwardRef,
   useCallback,
+  useEffect,
   useImperativeHandle,
+  useRef,
   useState,
 } from 'react';
 import {
@@ -20,6 +22,7 @@ import { TextInputMask } from 'react-native-masked-text';
 interface ScheduleAvailabilityProps {
   disabled?: boolean;
   daysOfWeek?: string[];
+  onChange?: (values: any[]) => any;
 }
 
 const defaultWeekDays = [
@@ -33,33 +36,57 @@ const defaultWeekDays = [
 ];
 
 const ScheduleAvailability = (
-  { disabled = false, daysOfWeek = defaultWeekDays }: ScheduleAvailabilityProps,
+  {
+    disabled = false,
+    daysOfWeek = defaultWeekDays,
+    onChange = () => {},
+  }: ScheduleAvailabilityProps,
   ref: any
 ) => {
-  const [inputs, setInputs] = useState(
-    daysOfWeek.map(() => [
-      <TimeInput ref={createRef()} key={`${0}_${Math.random()}`} />,
-    ])
-  );
+  const isMounted = useRef(false);
+  const [inputs, setInputs] = useState(daysOfWeek.map(() => [] as any));
 
-  const handleAddInput = useCallback((dayIndex: number) => {
-    setInputs((prevState) => {
-      const inputsList = [...prevState];
-      inputsList[dayIndex] = [
-        ...inputsList[dayIndex],
-        <TimeInput
-          ref={createRef()}
-          initialValue=""
-          key={`${dayIndex}_${Math.random()}`}
-        />,
-      ];
-      return inputsList;
+  const handleSubmit = useCallback(() => {
+    const values = inputs.map((day: any) => {
+      const times = day.map((input: any) => {
+        if (input.ref.current) {
+          return input.ref.current.getValue();
+        }
+        return null;
+      });
+      return times;
     });
-  }, []);
+    return values;
+  }, [inputs]);
+
+  const handleChanges = useCallback(() => {
+    const values = handleSubmit();
+    onChange(values);
+  }, [handleSubmit, onChange]);
+
+  const handleAddInput = useCallback(
+    (dayIndex: number) => {
+      setInputs((prevState) => {
+        const inputsList = [...prevState];
+        inputsList[dayIndex] = [
+          ...inputsList[dayIndex],
+          <TimeInput
+            ref={createRef()}
+            initialValue=""
+            onChange={handleChanges}
+            key={`${dayIndex}_${Math.random()}`}
+          />,
+        ];
+        return inputsList;
+      });
+      handleChanges();
+    },
+    [handleChanges]
+  );
 
   const handleRemoveInput = useCallback(
     (dayIndex: number, inputIndex: number) => {
-      setInputs((prevState) => {
+      setInputs((prevState: any) => {
         const inputsList = [...prevState];
         if (!inputsList[dayIndex] || !inputsList[dayIndex][inputIndex]) {
           return prevState;
@@ -67,19 +94,10 @@ const ScheduleAvailability = (
         inputsList[dayIndex].splice(inputIndex, 1);
         return inputsList;
       });
+      handleChanges();
     },
-    []
+    [handleChanges]
   );
-
-  const handleSubmit = useCallback(() => {
-    const values = inputs.map((day: any) => {
-      const times = day.map((input: any) => input.ref.current.getValue());
-      // const ranges = mergeRanges(times);
-      // console.log(ranges);
-      return times;
-    });
-    return values;
-  }, [inputs]);
 
   // const mergeRanges = (timesList: [any]) => {
   //   // sort by start times, slice will return a shallow copy of the array, not affecting original array
@@ -122,7 +140,7 @@ const ScheduleAvailability = (
         <View style={[styles.weekDayView, runtimeStyle]}>
           <Text style={styles.weekDayTitle}>{day}</Text>
           <View style={styles.weekDayInputs}>
-            {inputs[dayIndex].map((input, index) =>
+            {inputs[dayIndex].map((input: any, index: number) =>
               React.cloneElement(input, {
                 key: input.key,
                 onRemovePress: () => handleRemoveInput(dayIndex, index),
@@ -143,6 +161,21 @@ const ScheduleAvailability = (
     },
     [handleAddInput, inputs, handleRemoveInput, daysOfWeek]
   );
+
+  useEffect(() => {
+    if (!isMounted.current) {
+      inputs.map((dayList) => {
+        dayList.push(
+          <TimeInput
+            ref={createRef()}
+            key={`${0}_${Math.random()}`}
+            onChange={handleChanges}
+          />
+        );
+      });
+      isMounted.current = true;
+    }
+  }, [inputs, handleChanges]);
 
   useImperativeHandle(ref, () => ({
     submit: handleSubmit,
@@ -171,7 +204,11 @@ const ScheduleAvailability = (
 
 const TimeInput = forwardRef(
   (
-    { onRemovePress = () => {}, initialValue = '08:00 - 18:00' }: any,
+    {
+      onRemovePress = () => {},
+      initialValue = '08:00 - 18:00',
+      onChange = () => {},
+    }: any,
     ref: any
   ) => {
     const [value, setValue] = useState(initialValue);
@@ -205,20 +242,23 @@ const TimeInput = forwardRef(
       }
     }, [value, oldValue]);
 
-    const handleChangeText = useCallback((text: string) => {
-      const regex = /^([0-1]?[0-9]|2[0-4]):([0-5][0-9])(:[0-5][0-9])?$/;
-      const [initialTime, endTime] = text.split(' - ');
+    const handleChangeText = useCallback(
+      (text: string) => {
+        const regex = /^([0-1]?[0-9]|2[0-4]):([0-5][0-9])(:[0-5][0-9])?$/;
+        const [initialTime, endTime] = text.split(' - ');
 
-      const isValid = regex.test(initialTime) && regex.test(endTime);
+        const isValid = regex.test(initialTime) && regex.test(endTime);
 
-      if (!isValid) {
-        setHasError(true);
-      } else {
-        setHasError(false);
-      }
-
-      setValue(text);
-    }, []);
+        if (!isValid) {
+          setHasError(true);
+        } else {
+          setHasError(false);
+        }
+        onChange(text);
+        setValue(text);
+      },
+      [onChange]
+    );
 
     return (
       <View style={styles.timeTextInputWrapper}>

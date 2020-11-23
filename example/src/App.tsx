@@ -27,6 +27,7 @@ export default function App() {
       <RnScheduleAvailability
         disabled={false}
         daysOfWeek={daysOfWeek}
+        onChange={console.log}
         ref={scheduleRef}
       />
       <Button onPress={handleSubmit} title="Submit" />
