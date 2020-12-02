@@ -23,6 +23,7 @@ interface ScheduleAvailabilityProps {
   disabled?: boolean;
   daysOfWeek?: string[];
   onChange?: (values: any[]) => any;
+  initialValues?: any;
 }
 
 const defaultWeekDays = [
@@ -40,6 +41,7 @@ const ScheduleAvailability = (
     disabled = false,
     daysOfWeek = defaultWeekDays,
     onChange = () => {},
+    initialValues = {},
   }: ScheduleAvailabilityProps,
   ref: any
 ) => {
@@ -65,21 +67,24 @@ const ScheduleAvailability = (
   }, [handleSubmit, onChange]);
 
   const handleAddInput = useCallback(
-    (dayIndex: number) => {
+    (dayIndex: number, initialValue: any = null) => {
       setInputs((prevState) => {
         const inputsList = [...prevState];
         inputsList[dayIndex] = [
           ...inputsList[dayIndex],
           <TimeInput
             ref={createRef()}
-            initialValue=""
+            initialValue={initialValue}
             onChange={handleChanges}
             key={`${dayIndex}_${Math.random()}`}
           />,
         ];
         return inputsList;
       });
-      handleChanges();
+      // Dont call handleChange on firstMount
+      if (isMounted.current) {
+        handleChanges();
+      }
     },
     [handleChanges]
   );
@@ -164,18 +169,20 @@ const ScheduleAvailability = (
 
   useEffect(() => {
     if (!isMounted.current) {
-      inputs.map((dayList) => {
-        dayList.push(
-          <TimeInput
-            ref={createRef()}
-            key={`${0}_${Math.random()}`}
-            onChange={handleChanges}
-          />
-        );
-      });
+      if (Array.isArray(initialValues) && initialValues.length > 0) {
+        initialValues.forEach((dayList: any[], dayIndex: number) => {
+          dayList.forEach((input) => {
+            const value =
+              dayList.length === 0
+                ? null
+                : `${input.startTime} - ${input.endTime}` || null;
+            handleAddInput(dayIndex, value);
+          });
+        });
+      }
       isMounted.current = true;
     }
-  }, [inputs, handleChanges]);
+  }, [inputs, handleChanges, initialValues, handleAddInput]);
 
   useImperativeHandle(ref, () => ({
     submit: handleSubmit,
@@ -204,22 +211,22 @@ const ScheduleAvailability = (
 
 const TimeInput = forwardRef(
   (
-    {
-      onRemovePress = () => {},
-      initialValue = '08:00 - 18:00',
-      onChange = () => {},
-    }: any,
+    { onRemovePress = () => {}, initialValue = null, onChange = () => {} }: any,
     ref: any
   ) => {
     const [value, setValue] = useState(initialValue);
     const [oldValue, setOldValue] = useState('');
     const [hasError, setHasError] = useState(false);
+    const inputPlaceholder = initialValue ? initialValue : '08:00 - 18:00';
 
     useImperativeHandle(ref, () => ({
       getValue: () => {
-        const [startTime, endTime] = value
-          .split('-')
-          .map((time: string) => time.trim());
+        let startTime, endTime;
+        if (value) {
+          [startTime, endTime] = value
+            .split('-')
+            .map((time: string) => time.trim());
+        }
 
         return {
           startTime: startTime || null,
@@ -275,7 +282,7 @@ const TimeInput = forwardRef(
           value={value}
           onChangeText={handleChangeText}
           refInput={ref}
-          placeholder="08:00 - 18:00"
+          placeholder={inputPlaceholder}
           keyboardType="number-pad"
           onFocus={handleFocus}
           onBlur={handleBlur}

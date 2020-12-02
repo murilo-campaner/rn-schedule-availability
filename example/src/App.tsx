@@ -22,12 +22,26 @@ export default function App() {
     }
   }, [scheduleRef]);
 
+  const intialValues = [
+    [
+      { startTime: '12:31', endTime: '23:12', week_day: 1 },
+      { startTime: '12:34', endTime: '23:15', week_day: 1 },
+    ],
+    [{ startTime: '08:00', endTime: '18:00', week_day: 2 }],
+    [{ startTime: '08:00', endTime: '18:00', week_day: 3 }],
+    [{ startTime: '08:00', endTime: '18:00', week_day: 4 }],
+    [{ startTime: '08:00', endTime: '18:00', week_day: 5 }],
+    [{ startTime: '08:00', endTime: '18:00', week_day: 6 }],
+    [{ startTime: '08:00', endTime: '18:00', week_day: 7 }],
+  ];
+
   return (
     <View style={styles.container}>
       <RnScheduleAvailability
+        initialValues={intialValues}
         disabled={false}
         daysOfWeek={daysOfWeek}
-        onChange={console.log}
+        // onChange={console.log}
         ref={scheduleRef}
       />
       <Button onPress={handleSubmit} title="Submit" />
