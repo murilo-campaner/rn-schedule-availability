@@ -142,6 +142,7 @@
   },
   "dependencies": {
     "@types/react-native-snap-carousel": "^3.8.2",
+    "moment": "^2.29.1",
     "react-native-masked-text": "^1.13.0",
     "react-native-snap-carousel": "^3.9.1"
   }

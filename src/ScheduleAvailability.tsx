@@ -18,11 +18,12 @@ import {
 
 import Carousel from 'react-native-snap-carousel';
 import { TextInputMask } from 'react-native-masked-text';
+import moment from 'moment';
 
 interface ScheduleAvailabilityProps {
   disabled?: boolean;
   daysOfWeek?: string[];
-  onChange?: (values: any[]) => any;
+  onChange?: (data: { hasError: any; values: any[] }) => any;
   initialValues?: any;
 }
 
@@ -49,16 +50,23 @@ const ScheduleAvailability = (
   const [inputs, setInputs] = useState(daysOfWeek.map(() => [] as any));
 
   const handleSubmit = useCallback(() => {
+    let hasError = false;
     const values = inputs.map((day: any) => {
       const times = day.map((input: any) => {
         if (input.ref.current) {
-          return input.ref.current.getValue();
+          const data = input.ref.current.getValue();
+          hasError = hasError || data.errors.length > 0;
+          return data;
         }
         return null;
       });
       return times;
     });
-    return values;
+
+    return {
+      hasError,
+      values,
+    };
   }, [inputs]);
 
   const handleChanges = useCallback(() => {
@@ -70,15 +78,14 @@ const ScheduleAvailability = (
     (dayIndex: number, initialValue: any = null) => {
       setInputs((prevState) => {
         const inputsList = [...prevState];
-        inputsList[dayIndex] = [
-          ...inputsList[dayIndex],
+        inputsList[dayIndex].push(
           <TimeInput
             ref={createRef()}
             initialValue={initialValue}
             onChange={handleChanges}
             key={`${dayIndex}_${Math.random()}`}
-          />,
-        ];
+          />
+        );
         return inputsList;
       });
       // Dont call handleChange on firstMount
@@ -216,7 +223,7 @@ const TimeInput = forwardRef(
   ) => {
     const [value, setValue] = useState(initialValue);
     const [oldValue, setOldValue] = useState('');
-    const [hasError, setHasError] = useState(false);
+    const [errors, setErrors] = useState<string[]>([]);
     const inputPlaceholder = initialValue ? initialValue : '08:00 - 18:00';
 
     useImperativeHandle(ref, () => ({
@@ -231,6 +238,7 @@ const TimeInput = forwardRef(
         return {
           startTime: startTime || null,
           endTime: endTime || null,
+          errors,
         };
       },
     }));
@@ -249,23 +257,36 @@ const TimeInput = forwardRef(
       }
     }, [value, oldValue]);
 
+    const validateField = useCallback((text: string = '') => {
+      const [initialTime, endTime] = text.split(' - ');
+      const momentInitialTime = moment(initialTime, 'HH:mm');
+      const momentEndTime = moment(endTime, 'HH:mm');
+
+      let inputErrors = [];
+      if (!momentInitialTime.isValid()) {
+        inputErrors.push('A data inicial é inválida');
+      } else if (!momentEndTime.isValid()) {
+        inputErrors.push('A data final é inválida');
+      } else if (momentInitialTime.isAfter(momentEndTime)) {
+        inputErrors.push('A data inicial não pode ser posterior à data final');
+      }
+
+      setErrors(inputErrors.length ? inputErrors : []);
+
+      return inputErrors;
+    }, []);
+
     const handleChangeText = useCallback(
       (text: string) => {
-        const regex = /^([0-1]?[0-9]|2[0-4]):([0-5][0-9])(:[0-5][0-9])?$/;
-        const [initialTime, endTime] = text.split(' - ');
-
-        const isValid = regex.test(initialTime) && regex.test(endTime);
-
-        if (!isValid) {
-          setHasError(true);
-        } else {
-          setHasError(false);
-        }
-        onChange(text);
         setValue(text);
+        onChange(text);
       },
       [onChange]
     );
+
+    useEffect(() => {
+      validateField(value);
+    }, [validateField, value]);
 
     return (
       <View style={styles.timeTextInputWrapper}>
@@ -273,7 +294,7 @@ const TimeInput = forwardRef(
           style={[
             styles.timeTextInput,
             styles.timeTextInputShadow,
-            hasError && styles.timeTextInputError,
+            errors.length > 0 && styles.timeTextInputError,
           ]}
           type="custom"
           options={{
